@@ -2,7 +2,6 @@ import os
 import logging
 import asyncio
 import random
-import string
 import re
 from typing import Dict, List
 from datetime import datetime
@@ -11,30 +10,30 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 from telegram.constants import ParseMode
 
-# СПИСОК ТОКЕНОВ ДЛЯ 9 БОТОВ
+# ТОКЕНЫ ДЛЯ 9 БОТОВ
 BOT_TOKENS = [
-    "8633809924:AAGLwVQSfBDzQUNU3GKhceMUV_pzNtpcAHA",  # Бот #1 - КС2 Прайм
-    "8315119156:AAE6dIIYMsE80f7TVAyby_qMxKtqdzm5EOo",  # Бот #2 - КС2 Скины
-    "8633809924:AAGLwVQSfBDzQUNU3GKhceMUV_pzNtpcAHA",  # Бот #3 - Робуксы
-    "8445466695:AAGORyjHM8ghSs2jhKblwwrO0-aJNp6Zuq8",  # Бот #4 - Голда Стандофф2
-    "8408906854:AAH1o9LAf9kKKMh6mmZj0BGAlsE670DjslA",  # Бот #5 - ТГ НФТ
-    "8622662261:AAFfT6Ye6tB8O01QhjYRYinHrxpr9ZykvOw",  # Бот #6 - ТГ Звёзды
-    "8562359492:AAFWc3XXKAtCkCh_Y8uznLcY6lFZFdI7gn0",  # Бот #7 - Кинопоиск/Премьер
-    "8562359492:AAFWc3XXKAtCkCh_Y8uznLcY6lFZFdI7gn0",  # Бот #8 - Гемы Бравл Старс
-    "8562359492:AAFWc3XXKAtCkCh_Y8uznLcY6lFZFdI7gn0",  # Бот #9 - Дополнительный
+    "8583713671:AAEeKGKmZBzQ0rqsiDShGXjOnijN6G-32-w",  # CS2 ПРАЙМ
+    "8315119156:AAE6dIIYMsE80f7TVAyby_qMxKtqdzm5EOo",  # CS2 СКИНЫ
+    "8633809924:AAGLwVQSfBDzQUNU3GKhceMUV_pzNtpcAHA",  # БЕСПЛАТНЫЕ РОБУКСЫ
+    "8445466695:AAGORyjHM8ghSs2jhKblwwrO0-aJNp6Zuq8",  # СТЕНДОФФ2 ГОЛДА
+    "8408906854:AAH1o9LAf9kKKMh6mmZj0BGAlsE670DjslA",  # ТГ НФТ
+    "8622662261:AAFfT6Ye6tB8O01QhjYRYinHrxpr9ZykvOw",  # ТГ ЗВЁЗДЫ
+    "8562359492:AAFWc3XXKAtCkCh_Y8uznLcY6lFZFdI7gn0",  # КИНОПОИСК/PREMIER
+    "8644384412:AAFi1bGQdE9dm9rLnCi51lvpLaXphdUyx0s",  # BRAWL STARS ГЕМЫ
+    "8784577185:AAEsqS036U2aWV4ElydYvBAM-bSiHwWhFGI",  # ТГ ПРЕМИУМ
 ]
 
-# НАЗВАНИЯ ДЛЯ БОТОВ
+# НАЗВАНИЯ БОТОВ
 BOT_NAMES = [
-    "🎮 КС2 ПРАЙМ",
-    "🔫 КС2 СКИНЫ",
-    "⭐ РОБУКСЫ",
-    "💀 ГОЛДА СТАНДОФФ2",
+    "🎮 CS2 ПРАЙМ",
+    "🔫 CS2 СКИНЫ",
+    "⭐ БЕСПЛАТНЫЕ РОБУКСЫ",
+    "💀 СТЕНДОФФ2 ГОЛДА",
     "🖼️ ТГ НФТ",
     "✨ ТГ ЗВЁЗДЫ",
-    "🎬 КИНОПОИСК/ПРЕМЬЕР",
-    "💎 ГЕМЫ БРАВЛ СТАРС",
-    "🎁 БОНУСНЫЙ БОТ"
+    "🎬 КИНОПОИСК/PREMIER",
+    "💎 BRAWL STARS ГЕМЫ",
+    "💎 ТГ ПРЕМИУМ"
 ]
 
 logging.basicConfig(
@@ -43,7 +42,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# БАЗОВЫЕ ЗАДАНИЯ (из твоего скрипта)
+# БАЗОВЫЕ ЗАДАНИЯ
 BASE_TASKS = ["yandex", "sberprime", "yandexplus", "tv24"]
 
 # ИНФОРМАЦИЯ О ЗАДАНИЯХ
@@ -76,31 +75,20 @@ TASK_INFO = {
 
 # КАНАЛЫ ДЛЯ ФЕЙКОВОЙ ПРОВЕРКИ
 REQUIRED_CHANNELS = [
-    {"name": "🎮 ТЕМКИ", "link": "https://t.me/+X6hEJTznwuc4NWIy", "username": "@temki_brawl"},
-    {"name": "🎮 ТЕЛКИ", "link": "https://t.me/+ZAmRG9tQciU0MTNi", "username": "@telki_brawl"},
-    {"name": "🎮 ЛЬГОТЫ", "link": "https://t.me/+sqs0iLp5T49iNDEy", "username": "@lgoty_brawl"}
+    {"name": "🎮 ТЕМКИ", "link": "https://t.me/+X6hEJTznwuc4NWIy"},
+    {"name": "🎮 ТЕЛКИ", "link": "https://t.me/+ZAmRG9tQciU0MTNi"},
+    {"name": "🎮 ЛЬГОТЫ", "link": "https://t.me/+sqs0iLp5T49iNDEy"}
 ]
 
-def generate_tasks_for_bot(bot_index: int) -> List[str]:
-    """Генерирует рандомное количество заданий для бота (3 или 4)"""
+def generate_tasks_for_bot():
+    """Генерирует рандомное количество заданий (3 или 4)"""
     num_tasks = random.choice([3, 4])
-    shuffled_tasks = BASE_TASKS.copy()
-    random.shuffle(shuffled_tasks)
-    bot_tasks = shuffled_tasks[:num_tasks]
-    return bot_tasks
-
-# Генерируем конфиги для всех ботов
-bots_config = {}
-for i, token in enumerate(BOT_TOKENS):
-    if token:
-        bots_config[token] = {
-            "tasks_order": generate_tasks_for_bot(i),
-            "bot_name": BOT_NAMES[i],
-            "bot_number": i + 1
-        }
+    shuffled = BASE_TASKS.copy()
+    random.shuffle(shuffled)
+    return shuffled[:num_tasks]
 
 def is_player_id(text: str) -> bool:
-    """Проверяет, является ли текст ID игрока Brawl Stars"""
+    """Проверяет ID игрока Brawl Stars"""
     patterns = [
         r'^[A-Z0-9]{9}$',
         r'^#[A-Z0-9]{9}$',
@@ -147,41 +135,42 @@ async def check_reminders(context: ContextTypes.DEFAULT_TYPE, user_data: Dict[in
     to_remove = []
     
     for user_id, user in user_data.items():
-        if user.reward_claimed:
-            to_remove.append(user_id)
-            continue
-        
-        if user.current_task_index >= len(user.tasks_order):
-            continue
-        
-        time_diff = now - user.last_activity
-        hours_passed = time_diff.total_seconds() / 3600
-        
-        if hours_passed >= 1 and not user.reminder_sent:
-            task_key = user.tasks_order[user.current_task_index]
-            task_name = TASK_INFO[task_key]["name"]
-            task_num = user.current_task_index + 1
-            total_tasks = len(user.tasks_order)
+        if isinstance(user, UserState):
+            if user.reward_claimed:
+                to_remove.append(user_id)
+                continue
             
-            await send_reminder(context, user_id, task_name, task_num, total_tasks)
-            user.reminder_sent = True
-        
-        elif hours_passed >= 2 and user.reminder_sent:
-            task_key = user.tasks_order[user.current_task_index]
-            task_name = TASK_INFO[task_key]["name"]
-            task_num = user.current_task_index + 1
-            total_tasks = len(user.tasks_order)
+            if user.current_task_index >= len(user.tasks_order):
+                continue
             
-            await send_reminder(context, user_id, task_name, task_num, total_tasks)
-            user.last_activity = now
+            time_diff = now - user.last_activity
+            hours_passed = time_diff.total_seconds() / 3600
+            
+            if hours_passed >= 1 and not user.reminder_sent:
+                task_key = user.tasks_order[user.current_task_index]
+                task_name = TASK_INFO[task_key]["name"]
+                task_num = user.current_task_index + 1
+                total_tasks = len(user.tasks_order)
+                
+                await send_reminder(context, user_id, task_name, task_num, total_tasks)
+                user.reminder_sent = True
+            
+            elif hours_passed >= 2 and user.reminder_sent:
+                task_key = user.tasks_order[user.current_task_index]
+                task_name = TASK_INFO[task_key]["name"]
+                task_num = user.current_task_index + 1
+                total_tasks = len(user.tasks_order)
+                
+                await send_reminder(context, user_id, task_name, task_num, total_tasks)
+                user.last_activity = now
     
     for user_id in to_remove:
         if user_id in user_data:
             del user_data[user_id]
 
 async def fake_check_subscription(update: Update, user_id: int, bot_name: str) -> bool:
-    """ФЕЙКОВАЯ ПРОВЕРКА ПОДПИСКИ - Всегда возвращает True"""
-    logger.info(f"🔴 [{bot_name}] Фейк-проверка: пользователь {user_id} прошел проверку")
+    """ФЕЙКОВАЯ ПРОВЕРКА - всегда успешна"""
+    logger.info(f"🔴 [{bot_name}] Фейк-проверка: пользователь {user_id} прошел")
     return True
 
 async def subscriptions_menu(update: Update, context: ContextTypes.DEFAULT_TYPE, bot_name: str):
@@ -226,14 +215,14 @@ async def verify_subscriptions(update: Update, context: ContextTypes.DEFAULT_TYP
     
     user_id = query.from_user.id
     
-    # Фейковая проверка - всегда успешна
     is_subscribed = await fake_check_subscription(update, user_id, bot_name)
     
     if is_subscribed:
-        if user_id in user_data:
+        if user_id in user_data and not isinstance(user_data[user_id], list):
             user = user_data[user_id]
         else:
-            user = UserState(user_id, query.from_user.username, user_data["__tasks_order__"])
+            tasks_order = user_data.get("__tasks_order__", generate_tasks_for_bot())
+            user = UserState(user_id, query.from_user.username, tasks_order)
             user_data[user_id] = user
         
         user.subscriptions_verified = True
@@ -282,7 +271,7 @@ async def start_tasks(update: Update, context: ContextTypes.DEFAULT_TYPE, bot_na
     
     user_id = query.from_user.id
     
-    if user_id in user_data:
+    if user_id in user_data and not isinstance(user_data[user_id], list):
         user = user_data[user_id]
         if user.reward_claimed:
             await query.edit_message_text("❌ Ты уже получил награду! Нельзя проходить задания повторно.", parse_mode=ParseMode.HTML)
@@ -305,13 +294,8 @@ async def show_current_task(query, user: UserState, bot_name: str):
         await query.edit_message_text(
             text=f"✅ ПОЗДРАВЛЯЮ! ТЫ ВЫПОЛНИЛ ВСЕ {total_tasks} ЗАДАНИЙ! 🎉🎉🎉\n\n"
                  f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                 f"🎁 ТЕПЕРЬ ОТПРАВЬ СВОЙ ID BRAWL STARS:\n\n"
-                 f"📌 Как найти свой ID:\n"
-                 f"1. Открой игру Brawl Stars\n"
-                 f"2. Нажми на свой профиль\n"
-                 f"3. Скопируй ID (9 символов, буквы и цифры)\n"
-                 f"4. Отправь его сюда\n\n"
-                 f"Пример: <code>2YU9R0P8C</code> или <code>#2YU9R0P8C</code>\n\n"
+                 f"🎁 ТЕПЕРЬ ОТПРАВЬ СВОЙ ID:\n\n"
+                 f"📌 Отправь свой ID\n\n"
                  f"━━━━━━━━━━━━━━━━━━━━━━\n"
                  f"⏱ Награда придет в течение 12 часов!\n"
                  f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -360,7 +344,7 @@ async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE, bot_
     await query.answer()
     
     user_id = query.from_user.id
-    if user_id in user_data:
+    if user_id in user_data and not isinstance(user_data[user_id], list):
         del user_data[user_id]
     
     await main_menu(update, context, bot_name)
@@ -369,7 +353,7 @@ async def handle_player_id(update: Update, context: ContextTypes.DEFAULT_TYPE, u
     user_id = update.effective_user.id
     text = update.message.text.strip()
     
-    if user_id not in user_data:
+    if user_id not in user_data or isinstance(user_data[user_id], list):
         await update.message.reply_text("❌ Сначала нажми /start и выбери 'ПОЛУЧИТЬ НАГРАДУ'")
         return
     
@@ -381,29 +365,16 @@ async def handle_player_id(update: Update, context: ContextTypes.DEFAULT_TYPE, u
     
     clean_id = text.replace('#', '').strip().upper()
     
-    if not is_player_id(clean_id):
-        await update.message.reply_text(
-            "❌ Это не похоже на ID игрока Brawl Stars!\n\n"
-            "📌 Правильный формат:\n"
-            "ID состоит из 9 символов (буквы и цифры)\n\n"
-            "Пример: <code>2YU9R0P8C</code> или <code>#2YU9R0P8C</code>\n\n"
-            "Попробуй еще раз или нажми /start для отмены",
-            parse_mode=ParseMode.HTML
-        )
-        return
-    
     user.player_id = clean_id
     user.reward_claimed = True
     user.waiting_for_player_id = False
     
     await update.message.reply_text(
-        f"✅ ID BRAWL STARS ПРИНЯТ!\n\n"
+        f"✅ ID ПРИНЯТ!\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🎁 ТВОЙ ID: <code>{user.player_id}</code>\n\n"
         f"💰 НАГРАДА БУДЕТ ЗАЧИСЛЕНА В ТЕЧЕНИЕ 12 ЧАСОВ!\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"📝 Сохрани этот диалог, если возникнут вопросы.\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"Спасибо за участие! 🎮",
         parse_mode=ParseMode.HTML
     )
@@ -413,7 +384,7 @@ async def handle_player_id(update: Update, context: ContextTypes.DEFAULT_TYPE, u
 async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE, user_data: Dict[int, UserState], bot_name: str):
     user_id = update.effective_user.id
     
-    if user_id not in user_data:
+    if user_id not in user_data or isinstance(user_data[user_id], list):
         await update.message.reply_text("❌ Сначала нажми /start и выбери 'ПОЛУЧИТЬ НАГРАДУ'")
         return
     
@@ -430,7 +401,6 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE, 
     user.last_activity = datetime.now()
     user.reminder_sent = False
     
-    photo = update.message.photo[-1]
     user.waiting_for_screenshot = False
     
     current_num = user.current_task_index + 1
@@ -453,15 +423,14 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         except:
             pass
         
-        completed_task = user.current_task_key
-        user.completed_tasks.append(completed_task)
+        user.completed_tasks.append(user.current_task_key)
         user.current_task_index += 1
         
         if user.current_task_index >= total_tasks:
             await update.message.reply_text(
                 f"✅ ЗАДАНИЕ {current_num}/{total_tasks} ВЫПОЛНЕНО!\n\n"
                 f"🎉 ПОЗДРАВЛЯЮ! ТЫ ВЫПОЛНИЛ ВСЕ ЗАДАНИЯ!\n\n"
-                f"🎁 Теперь отправь свой ID Brawl Stars, чтобы получить награду!"
+                f"🎁 Теперь отправь свой ID, чтобы получить награду!"
             )
             await asyncio.sleep(2)
             
@@ -476,7 +445,7 @@ async def handle_screenshot(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         else:
             await update.message.reply_text(
                 f"✅ ЗАДАНИЕ {current_num}/{total_tasks} ВЫПОЛНЕНО!\n\n"
-                f"Отлично! Переходим к заданию {current_num + 1}/{total_tasks}... 🚀"
+                f"Отлично! Переходим к заданию {user.current_task_index + 1}/{total_tasks}... 🚀"
             )
             await asyncio.sleep(2)
             
@@ -497,11 +466,7 @@ async def run_bot(bot_token: str, bot_config: dict):
     bot_number = bot_config["bot_number"]
     tasks_order = bot_config["tasks_order"]
     
-    print(f"🚀 БОТ #{bot_number} ЗАПУСКАЕТСЯ...")
-    print(f"📛 Имя: {bot_name}")
-    print(f"📋 Заданий: {len(tasks_order)}")
-    print(f"📝 Список: {tasks_order}")
-    print("-" * 40)
+    print(f"🚀 БОТ #{bot_number} ЗАПУСКАЕТСЯ: {bot_name} ({len(tasks_order)} заданий)")
     
     user_data: Dict[int, UserState] = {}
     user_data["__tasks_order__"] = tasks_order
@@ -558,22 +523,30 @@ async def run_bot(bot_token: str, bot_config: dict):
 async def main():
     """Запуск всех ботов"""
     print("=" * 60)
-    print("🤖 ЗАПУСК 9 БОТОВ С РАНДОМНЫМИ ЗАДАНИЯМИ")
+    print("🤖 ЗАПУСК 9 БОТОВ НА RAILWAY")
     print("=" * 60)
     
-    for token, config in bots_config.items():
-        print(f"Бот #{config['bot_number']}: {config['bot_name']} -> {len(config['tasks_order'])} заданий: {config['tasks_order']}")
+    # Генерируем конфиги для всех ботов
+    bots_config = []
+    for i, token in enumerate(BOT_TOKENS):
+        if token:
+            bots_config.append({
+                "token": token,
+                "tasks_order": generate_tasks_for_bot(),
+                "bot_name": BOT_NAMES[i],
+                "bot_number": i + 1
+            })
+            print(f"Бот #{i+1}: {BOT_NAMES[i]} -> {len(bots_config[-1]['tasks_order'])} заданий")
     
     print("=" * 60)
     print("✅ ФЕЙКОВАЯ ПРОВЕРКА ПОДПИСОК АКТИВНА")
     print("=" * 60)
     
     tasks = []
-    for token, config in bots_config.items():
-        if token:
-            task = asyncio.create_task(run_bot(token, config))
-            tasks.append(task)
-            await asyncio.sleep(2)
+    for config in bots_config:
+        task = asyncio.create_task(run_bot(config["token"], config))
+        tasks.append(task)
+        await asyncio.sleep(2)
     
     if tasks:
         await asyncio.gather(*tasks)
