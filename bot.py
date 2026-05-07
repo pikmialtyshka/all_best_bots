@@ -155,12 +155,13 @@ def get_main_menu(is_admin_user, hide_cheburashka):
     keyboard.append([InlineKeyboardButton('👻 Дyxлec | Поиск по номеру 📱', url='https://t.me/Karmarseebot?start=r_G5Z95D57TN')])
     keyboard.append([InlineKeyboardButton('🕵️‍♂️ Шepлok | Поиск по фото 👁', url='https://t.me/kisankanatop_bot?start=_ref_yalLl8WEx_Ipg17UPFM')])
     keyboard.append([InlineKeyboardButton('🔐 RuVPN | Безопасный VPN 🌐', url='https://t.me/ruvpn?start=partner_1860340689')])
-    keyboard.append([InlineKeyboardButton('👗 Раздеватор | AI раздевалка 🔥', url='https://t.me/razdevator_bot?start=ref')])  # Раздеватор
+    keyboard.append([InlineKeyboardButton('👗 Раздеватор | AI раздевалка 🔥', url='https://t.me/razdevator_bot?start=ref')])
     keyboard.append([
         InlineKeyboardButton('📸 Инcтa Шnuoн', url='https://instashpion.ru?p=9cd42aee57cb325637213b895e815200'),
         InlineKeyboardButton('👥 BK Шnuoн', url='https://kogdavseti.ru/?p=0e11c1032d9ed026dcf04fdedad15355')
     ])
-    keyboard.append([InlineKeyboardButton('🎲 Генератор потеx 🎭', url='https://gratzbot.app/?start=ref-de2e2b04')])
+    # Генератор потех с смайлами 🔞🍓
+    keyboard.append([InlineKeyboardButton('🎲 Генератор потеx 18+ 🔞🍓', url='https://gratzbot.app/?start=ref-de2e2b04')])
     
     # Кнопка "Глаз Чебурашки"
     if not hide_cheburashka:
@@ -210,7 +211,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 👗 Раздеватор - AI раздевалка
 📸 Инcтa Шпион - Instagram
 👥 BK Шпион - ВКонтакте
-🎲 Генератор потеx - генератор
+🎲 Генератор потеx 18+ 🔞🍓 - генератор
 
 <b>🔸 БЕСПЛАТНЫЕ НАГРАДЫ:</b>
 💎 9 ботов для получения подарков
@@ -338,7 +339,7 @@ def main():
     print('   👗 Раздеватор - AI раздевалка')
     print('   📸 Инста Шпион')
     print('   👥 ВК Шпион')
-    print('   🎲 Генератор потеx')
+    print('   🎲 Генератор потеx 18+ 🔞🍓')
     print('=' * 50)
     print('🔸 МОТИВИШНЫЕ БОТЫ (9 шт):')
     for i, bot in enumerate(MOTIVATION_BOTS, 1):
