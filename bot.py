@@ -44,7 +44,7 @@ BOT_NAMES = [
     "⭐ ТГ ПРЕМИУМ"
 ]
 
-# Админы для всех ботов
+# Админы
 ADMINS = [
     'annaapanfilova1',
     'PepeChilI',
@@ -79,9 +79,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ========== БАЗА ДАННЫХ ДЛЯ ПЕРЕХОДНИКА ==========
-def init_db():
-    conn = sqlite3.connect('./users.db')
+# ========== ФУНКЦИИ ДЛЯ БД (ОТДЕЛЬНАЯ ДЛЯ КАЖДОГО БОТА) ==========
+def get_db_name(bot_name: str) -> str:
+    """Возвращает имя файла БД для конкретного бота"""
+    # Убираем эмодзи и пробелы из имени
+    clean_name = ''.join(c for c in bot_name if c.isalnum() or c == '_')
+    return f'./users_{clean_name}.db'
+
+def init_bot_db(db_name: str):
+    """Инициализация БД для конкретного бота"""
+    conn = sqlite3.connect(db_name)
     cursor = conn.cursor()
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -94,11 +101,11 @@ def init_db():
     ''')
     conn.commit()
     conn.close()
-    print('✅ База данных готова')
 
-def save_user(user_id, username, first_name):
+def save_user_to_bot_db(db_name: str, user_id, username, first_name):
+    """Сохраняет пользователя в БД конкретного бота"""
     try:
-        conn = sqlite3.connect('./users.db')
+        conn = sqlite3.connect(db_name)
         cursor = conn.cursor()
         cursor.execute('''
             INSERT INTO users (user_id, username, first_name, last_seen)
@@ -111,61 +118,48 @@ def save_user(user_id, username, first_name):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f'Ошибка сохранения: {e}')
+        print(f'Ошибка сохранения в {db_name}: {e}')
 
-def get_total_users():
-    conn = sqlite3.connect('./users.db')
-    cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) as count FROM users')
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else 0
-
-def get_today_users():
-    conn = sqlite3.connect('./users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT COUNT(*) as count FROM users 
-        WHERE DATE(last_seen) = DATE('now', 'localtime')
-    ''')
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else 0
-
-def get_week_users():
-    conn = sqlite3.connect('./users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT COUNT(*) as count FROM users 
-        WHERE last_seen >= datetime('now', 'localtime', '-7 days')
-    ''')
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else 0
-
-def get_month_users():
-    conn = sqlite3.connect('./users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT COUNT(*) as count FROM users 
-        WHERE last_seen >= datetime('now', 'localtime', '-30 days')
-    ''')
-    result = cursor.fetchone()
-    conn.close()
-    return result[0] if result else 0
-
-def get_recent_users():
-    conn = sqlite3.connect('./users.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        SELECT username, first_name, last_seen 
-        FROM users 
-        ORDER BY last_seen DESC 
-        LIMIT 5
-    ''')
-    rows = cursor.fetchall()
-    conn.close()
-    return rows or []
+def get_bot_stats(db_name: str):
+    """Получает статистику для конкретного бота"""
+    try:
+        conn = sqlite3.connect(db_name)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT COUNT(*) as count FROM users')
+        total = cursor.fetchone()[0]
+        
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM users 
+            WHERE DATE(last_seen) = DATE('now', 'localtime')
+        ''')
+        today = cursor.fetchone()[0]
+        
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM users 
+            WHERE last_seen >= datetime('now', 'localtime', '-7 days')
+        ''')
+        week = cursor.fetchone()[0]
+        
+        cursor.execute('''
+            SELECT COUNT(*) as count FROM users 
+            WHERE last_seen >= datetime('now', 'localtime', '-30 days')
+        ''')
+        month = cursor.fetchone()[0]
+        
+        cursor.execute('''
+            SELECT username, first_name, last_seen 
+            FROM users 
+            ORDER BY last_seen DESC 
+            LIMIT 5
+        ''')
+        recent = cursor.fetchall()
+        
+        conn.close()
+        return total, today, week, month, recent
+    except Exception as e:
+        print(f'Ошибка получения статистики из {db_name}: {e}')
+        return 0, 0, 0, 0, []
 
 def is_admin(username):
     if not username:
@@ -253,7 +247,6 @@ class UserState:
         self.waiting_for_player_id = False
         self.subscriptions_verified = False
 
-# ========== ФУНКЦИИ ДЛЯ МОТИВИШНЫХ БОТОВ ==========
 async def fake_check_subscription(update: Update, user_id: int, bot_name: str) -> bool:
     logger.info(f"🔴 [{bot_name}] Фейк-проверка: пользователь {user_id} прошел")
     return True
@@ -262,7 +255,6 @@ async def fake_check_subscription(update: Update, user_id: int, bot_name: str) -
 def get_switcher_menu(is_admin_user, hide_cheburashka):
     keyboard = []
     
-    # ОСНОВНЫЕ ПРОДУКТЫ
     keyboard.append([InlineKeyboardButton('👻 Дyxлec | Поиск по номеру 📱', url='https://t.me/Karmarseebot?start=r_G5Z95D57TN')])
     keyboard.append([InlineKeyboardButton('🕵️‍♂️ Шepлok | Поиск по фото 👁', url='https://t.me/kisankanatop_bot?start=_ref_yalLl8WEx_Ipg17UPFM')])
     keyboard.append([InlineKeyboardButton('🔐 RuVPN | Безопасный VPN 🌐', url='https://t.me/ruvpn?start=partner_1860340689')])
@@ -273,11 +265,9 @@ def get_switcher_menu(is_admin_user, hide_cheburashka):
     ])
     keyboard.append([InlineKeyboardButton('🎲 Генератор потеx 18+ 🔞🍓', url='https://gratzbot.app/?start=ref-de2e2b04')])
     
-    # Глаз Чебурашки
     if not hide_cheburashka:
         keyboard.append([InlineKeyboardButton('👁 Глаз Чебурашки 🔍', url='https://t.me/search_ot_cheburashki_bot?start=_ref_kGDGyBSDx_kN7fr6pCO')])
     
-    # МОТИВИШНЫЕ БОТЫ
     keyboard.append([InlineKeyboardButton('⭐ ⭐ ⭐ ПОЛЕЗНЫЕ БОТЫ ⭐ ⭐ ⭐', callback_data='noop')])
     
     for i in range(0, len(MOTIVATION_BOTS), 2):
@@ -287,15 +277,17 @@ def get_switcher_menu(is_admin_user, hide_cheburashka):
             row.append(InlineKeyboardButton(MOTIVATION_BOTS[i + 1]['name'], url=MOTIVATION_BOTS[i + 1]['url']))
         keyboard.append(row)
     
-    # Админ-панель
     if is_admin_user:
         keyboard.append([InlineKeyboardButton('👑 АДМИН-ПАНЕЛЬ 👑', callback_data='admin_panel')])
     
     return InlineKeyboardMarkup(keyboard)
 
+# Своя БД для переходника
+SWITCHER_DB = './users_switcher.db'
+
 async def switcher_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.effective_user
-    save_user(user.id, user.username, user.first_name)
+    save_user_to_bot_db(SWITCHER_DB, user.id, user.username, user.first_name)
     hide_cheburashka = should_hide_cheburashka(user.username)
     
     text = f"""
@@ -317,16 +309,12 @@ async def switcher_button_callback(update: Update, context: ContextTypes.DEFAULT
             await query.answer('⛔ Только для админов', show_alert=True)
             return
         
-        total = get_total_users()
-        today = get_today_users()
-        week = get_week_users()
-        month = get_month_users()
-        recent = get_recent_users()
+        total, today, week, month, recent = get_bot_stats(SWITCHER_DB)
         
         msk_tz = pytz.timezone('Europe/Moscow')
         now = datetime.now(msk_tz)
         
-        text = f"👑 <b>АДМИН-ПАНЕЛЬ</b> (МСК {now.strftime('%d.%m %H:%M')})\n\n"
+        text = f"👑 <b>АДМИН-ПАНЕЛЬ [ПЕРЕХОДНИК]</b>\nМСК {now.strftime('%d.%m %H:%M')}\n\n"
         text += f"📊 Всего: {total} | Сегодня: {today} | Неделя: {week} | Месяц: {month}\n\n🕐 <b>Последние 5:</b>\n"
         for i, row in enumerate(recent, 1):
             username, first_name, last_seen = row
@@ -354,6 +342,7 @@ async def switcher_button_callback(update: Update, context: ContextTypes.DEFAULT
 async def run_switcher():
     """Запуск бота-переходника"""
     print("🚀 ПЕРЕХОДНИК ЗАПУСКАЕТСЯ...")
+    init_bot_db(SWITCHER_DB)
     
     application = Application.builder().token(SWITCHER_TOKEN).build()
     
@@ -366,23 +355,29 @@ async def run_switcher():
     
     print("✅ ПЕРЕХОДНИК ЗАПУЩЕН!")
     
-    # Держим бота активным
     while True:
         await asyncio.sleep(1)
 
 # ========== ЗАПУСК МОТИВИШНОГО БОТА ==========
 async def run_motivation_bot(bot_token: str, bot_name: str, bot_number: int):
-    """Запуск одного мотивишного бота"""
+    """Запуск одного мотивишного бота со СВОЕЙ БД"""
     tasks_order = generate_tasks_for_bot()
     user_data: Dict[int, UserState] = {}
     user_data["__tasks_order__"] = tasks_order
     
+    # СВОЯ БД ДЛЯ КАЖДОГО БОТА
+    bot_db = get_db_name(bot_name)
+    init_bot_db(bot_db)
+    
     print(f"🚀 МОТИВИШНЫЙ БОТ #{bot_number} ЗАПУСКАЕТСЯ: {bot_name} ({len(tasks_order)} заданий)")
+    print(f"   📁 БД: {bot_db}")
     
     application = Application.builder().token(bot_token).build()
     
-    # Главное меню
     async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        user = update.effective_user
+        save_user_to_bot_db(bot_db, user.id, user.username, user.first_name)
+        
         keyboard = [[InlineKeyboardButton("🎁 ПОЛУЧИТЬ НАГРАДУ", callback_data="start_tasks")]]
         if is_admin(update.effective_user.username):
             keyboard.append([InlineKeyboardButton("👑 АДМИН-ПАНЕЛЬ", callback_data="admin_panel")])
@@ -391,8 +386,7 @@ async def run_motivation_bot(bot_token: str, bot_name: str, bot_number: int):
             reply_markup=InlineKeyboardMarkup(keyboard)
         )
     
-    # Админ-панель
-    async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    async def admin_panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         await query.answer()
         user = query.from_user
@@ -401,12 +395,20 @@ async def run_motivation_bot(bot_token: str, bot_name: str, bot_number: int):
             await query.answer('⛔ Только для админов', show_alert=True)
             return
         
-        total = get_total_users()
-        today = get_today_users()
-        week = get_week_users()
-        month = get_month_users()
+        total, today, week, month, recent = get_bot_stats(bot_db)
         
-        text = f"👑 <b>АДМИН-ПАНЕЛЬ [{bot_name}]</b>\n\n📊 Всего: {total} | Сегодня: {today} | Неделя: {week} | Месяц: {month}"
+        text = f"👑 <b>АДМИН-ПАНЕЛЬ [{bot_name}]</b>\n\n"
+        text += f"📊 Всего пользователей: <b>{total}</b>\n"
+        text += f"• За сегодня: <b>{today}</b>\n"
+        text += f"• За неделю: <b>{week}</b>\n"
+        text += f"• За месяц: <b>{month}</b>\n\n"
+        
+        text += f"🕐 <b>Последние 5:</b>\n"
+        for i, row in enumerate(recent, 1):
+            username, first_name, last_seen = row
+            name = first_name or 'Без имени'
+            username_str = f"@{username}" if username else 'нет username'
+            text += f"{i}. {name} ({username_str})\n"
         
         keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton('🔄 Обновить', callback_data='admin_panel')],
@@ -414,13 +416,12 @@ async def run_motivation_bot(bot_token: str, bot_name: str, bot_number: int):
         ])
         await query.edit_message_text(text, parse_mode='HTML', reply_markup=keyboard)
     
-    # Остальные обработчики
     async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         query = update.callback_query
         data = query.data
         
         if data == "admin_panel":
-            await admin_panel(update, context)
+            await admin_panel_callback(update, context)
         elif data == "back_to_menu":
             keyboard = [[InlineKeyboardButton("🎁 ПОЛУЧИТЬ НАГРАДУ", callback_data="start_tasks")]]
             if is_admin(query.from_user.username):
@@ -518,7 +519,6 @@ async def run_motivation_bot(bot_token: str, bot_name: str, bot_number: int):
     
     print(f"✅ МОТИВИШНЫЙ БОТ #{bot_number} ({bot_name}) ЗАПУЩЕН!")
     
-    # Держим бота активным
     while True:
         await asyncio.sleep(1)
 
@@ -527,15 +527,14 @@ async def main():
     print("=" * 60)
     print("🤖 ЗАПУСК ВСЕХ БОТОВ (ПЕРЕХОДНИК + 9 МОТИВИШНЫХ)")
     print("=" * 60)
+    print("📁 Каждый бот имеет свою БД с отдельной статистикой!")
+    print("=" * 60)
     
     # Запускаем Flask
     import threading
     flask_thread = threading.Thread(target=run_flask)
     flask_thread.daemon = True
     flask_thread.start()
-    
-    # Инициализируем БД
-    init_db()
     
     # Запускаем переходник
     switcher_task = asyncio.create_task(run_switcher())
@@ -546,9 +545,8 @@ async def main():
         if token:
             task = asyncio.create_task(run_motivation_bot(token, name, i + 1))
             bot_tasks.append(task)
-            await asyncio.sleep(2)  # Задержка между запусками
+            await asyncio.sleep(2)
     
-    # Ждем все задачи
     await asyncio.gather(switcher_task, *bot_tasks)
 
 if __name__ == '__main__':
